@@ -191,6 +191,10 @@ async function setupTailwindcss(projectPath) {
     htmlContent
   );
 
+  addScriptsToPackageJson(projectPath, {
+    css: "tailwindcss -i ./src/styles.css -o ./build/output.css --watch",
+  });
+
   // Install the prettier plugin for tailwindcss for automatic class ordering
   runCommand("npm install --save-dev prettier-plugin-tailwindcss", {
     cwd: projectPath,
