@@ -141,7 +141,7 @@ async function createNpmProject(projectPath) {
 // This function installs TypeScript and necessary dev dependencies in the provided project path
 // It also creates a tsconfig.json file and a src directory
 // Finally, it adds some scripts to the package.json file
-async function setupTypescript(projectPath) {
+async function setupTypescript(projectPath, singleDevScript) {
   await runCommand(
     "npm install --save-dev typescript @types/node @typescript-eslint/parser @typescript-eslint/eslint-plugin",
     { cwd: projectPath }
@@ -155,16 +155,25 @@ async function setupTypescript(projectPath) {
   // Make src directory
   await fs.promises.mkdir(path.join(projectPath, "src"), { recursive: true });
 
-  const scripts = {
-    build: "tsc",
-    dev: "tsc -w",
-    typecheck: "tsc -b",
-  };
-  await addScriptsToPackageJson(projectPath, scripts);
+  if (singleDevScript) {
+    const scripts = {
+      build: "tsc",
+      dev: "tsc -w",
+      typecheck: "tsc -b",
+    };
+    await addScriptsToPackageJson(projectPath, scripts);
+  } else {
+    await addScriptsToPackageJson(projectPath, { "dev:typescript": "tsc -w" });
+  }
+
+  await fs.promises.writeFile(
+    path.join(projectPath, "src", "app.ts"),
+    'console.log("Hello, world!");'
+  );
 }
 
 // This function installs tailwindcss and initializes it in the provided project path
-async function setupTailwindcss(projectPath) {
+async function setupTailwindcss(projectPath, singleDevScript) {
   await runCommand("npm install --save-dev tailwindcss", { cwd: projectPath });
   await runCommand("npx tailwindcss init --esm", { cwd: projectPath });
   await fs.promises.mkdir(path.join(projectPath, "src/styles"), {
@@ -174,7 +183,7 @@ async function setupTailwindcss(projectPath) {
   const tailwindConfigPath = path.join(projectPath, "tailwind.config.js");
   const tailwindConfigModule = await import(tailwindConfigPath);
   const tailwindConfig = tailwindConfigModule.default;
-  tailwindConfig.content = ["./src/**/*.{html,js}"];
+  tailwindConfig.content = ["./src/**/*.{html,js}", "./index.html"];
 
   // Write the updated configuration back to the file
   await fs.promises.writeFile(
@@ -200,7 +209,7 @@ async function setupTailwindcss(projectPath) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${projectPath}</title>
-    <link href="/src/styles.css" rel="stylesheet">
+    <link href="./build/output.css" rel="stylesheet">
   </head>
   <body class="bg-gray-200 text-gray-900">
     <!-- Your content here -->
@@ -212,12 +221,19 @@ async function setupTailwindcss(projectPath) {
     htmlContent
   );
 
-  addScriptsToPackageJson(projectPath, {
-    css: "tailwindcss -i ./src/styles.css -o ./build/output.css --watch",
-  });
+  if (singleDevScript) {
+    addScriptsToPackageJson(projectPath, {
+      css: "tailwindcss -i ./src/styles.css -o ./build/output.css --watch",
+    });
+  } else {
+    await addScriptsToPackageJson(projectPath, {
+      "dev:tailwind":
+        "tailwindcss -i ./src/styles/tailwind.css -o ./build/output.css --watch",
+    });
+  }
 
   // Install the prettier plugin for tailwindcss for automatic class ordering
-  runCommand("npm install --save-dev prettier-plugin-tailwindcss", {
+  await runCommand("npm install --save-dev prettier-plugin-tailwindcss", {
     cwd: projectPath,
   });
 }
@@ -291,14 +307,24 @@ async function createProject(projectName, type, useTailwindcss, useGit) {
 
     await createNpmProject(projectPath);
 
+    // If TypeScript and Tailwindcss, install npm-run-all and add dev script
+    let singleDevScript = true;
+    if (type === "TypeScript" && useTailwindcss) {
+      singleDevScript = false;
+      await runCommand("npm install --save-dev npm-run-all", {
+        cwd: projectPath,
+      });
+      await addScriptsToPackageJson(projectPath, { dev: "run-p dev:*" });
+    }
+
     // If TypeScript, install additional dependencies and create tsconfig.json
     if (type === "TypeScript") {
-      await setupTypescript(projectPath);
+      await setupTypescript(projectPath, singleDevScript);
     }
 
     // If Tailwindcss, install additional dependencies and create tailwind.config.js
     if (useTailwindcss) {
-      await setupTailwindcss(projectPath);
+      await setupTailwindcss(projectPath, singleDevScript);
     }
 
     await createEslintConfig(projectPath, type);
