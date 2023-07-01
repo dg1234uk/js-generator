@@ -59,6 +59,26 @@ function runCommand(command, options) {
   });
 }
 
+// This function sets package.json type to module
+async function modulePackageJson(projectPath) {
+  const packageJsonPath = path.join(projectPath, "package.json");
+
+  // Ensure the package.json file exists
+  if (!fs.existsSync(packageJsonPath)) {
+    throw new Error(`File not found: ${packageJsonPath}`);
+  }
+
+  const packJsonFile = await fs.promises.readFile(packageJsonPath, ENCODING);
+  const packageJson = JSON.parse(packJsonFile);
+
+  packageJson.type = "module";
+
+  await fs.promises.writeFile(
+    packageJsonPath,
+    JSON.stringify(packageJson, null, 2)
+  );
+}
+
 // This function adds new scripts to the package.json file in the provided project path
 // If the package.json file does not exist, it throws an error
 async function addScriptsToPackageJson(projectPath, scripts) {
@@ -106,6 +126,7 @@ async function createNpmProject(projectPath) {
       "npm install --save-dev eslint prettier eslint-config-prettier eslint-config-airbnb eslint-plugin-import",
       { cwd: projectPath }
     );
+    await modulePackageJson(projectPath);
     const scripts = {
       format: "prettier --write .",
       lint: "eslint .",
@@ -145,7 +166,7 @@ async function setupTypescript(projectPath) {
 // This function installs tailwindcss and initializes it in the provided project path
 async function setupTailwindcss(projectPath) {
   await runCommand("npm install --save-dev tailwindcss", { cwd: projectPath });
-  await runCommand("npx tailwindcss init", { cwd: projectPath });
+  await runCommand("npx tailwindcss init --esm", { cwd: projectPath });
   await fs.promises.mkdir(path.join(projectPath, "src/styles"), {
     recursive: true,
   });
