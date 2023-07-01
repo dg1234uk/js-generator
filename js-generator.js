@@ -190,6 +190,11 @@ async function setupTailwindcss(projectPath) {
     path.join(projectPath, "index.html"),
     htmlContent
   );
+
+  // Install the prettier plugin for tailwindcss for automatic class ordering
+  runCommand("npm install --save-dev prettier-plugin-tailwindcss", {
+    cwd: projectPath,
+  });
 }
 
 // This function creates an ESLint configuration file in the provided project path
