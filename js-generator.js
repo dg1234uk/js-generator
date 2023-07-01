@@ -173,23 +173,33 @@ async function setupTypescript(projectPath, singleDevScript) {
 }
 
 // This function installs tailwindcss and initializes it in the provided project path
-async function setupTailwindcss(projectPath, singleDevScript) {
+async function setupTailwindcss(projectPath, type, singleDevScript) {
   await runCommand("npm install --save-dev tailwindcss", { cwd: projectPath });
-  await runCommand("npx tailwindcss init --esm", { cwd: projectPath });
+  const configType = type === "TypeScript" ? "--ts" : "--esm";
+  await runCommand(`npx tailwindcss init ${configType}`, { cwd: projectPath });
   await fs.promises.mkdir(path.join(projectPath, "src/styles"), {
     recursive: true,
   });
-  // Read in the tailwind.config.js file
-  const tailwindConfigPath = path.join(projectPath, "tailwind.config.js");
-  const tailwindConfigModule = await import(tailwindConfigPath);
-  const tailwindConfig = tailwindConfigModule.default;
-  tailwindConfig.content = ["./src/**/*.{html,js}", "./index.html"];
+
+  // Read in the tailwind.config file
+  const tailwindConfigFileName =
+    type === "TypeScript" ? "tailwind.config.ts" : "tailwind.config.js";
+  const tailwindConfigPath = path.join(projectPath, tailwindConfigFileName);
+
+  // Read in the tailwind.config file
+  let tailwindConfigFile = await fs.promises.readFile(
+    tailwindConfigPath,
+    ENCODING
+  );
+
+  // Modify the configuration
+  tailwindConfigFile = tailwindConfigFile.replace(
+    /content: \[\],/,
+    `content: ["./src/**/*.{html,js}", "./index.html"],`
+  );
 
   // Write the updated configuration back to the file
-  await fs.promises.writeFile(
-    tailwindConfigPath,
-    `export default ${JSON.stringify(tailwindConfig, null, 2)}`
-  );
+  await fs.promises.writeFile(tailwindConfigPath, tailwindConfigFile);
 
   // Create a basic CSS file
   const cssContent = `@import 'tailwindcss/base';
@@ -324,7 +334,7 @@ async function createProject(projectName, type, useTailwindcss, useGit) {
 
     // If Tailwindcss, install additional dependencies and create tailwind.config.js
     if (useTailwindcss) {
-      await setupTailwindcss(projectPath, singleDevScript);
+      await setupTailwindcss(projectPath, type, singleDevScript);
     }
 
     await createEslintConfig(projectPath, type);
