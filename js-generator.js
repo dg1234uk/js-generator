@@ -120,9 +120,9 @@ async function createNpmProject(projectPath) {
 // This function installs TypeScript and necessary dev dependencies in the provided project path
 // It also creates a tsconfig.json file and a src directory
 // Finally, it adds some scripts to the package.json file
-async function installTypescript(projectPath) {
+async function setupTypescript(projectPath) {
   await runCommand(
-    "npm install typescript @types/node @typescript-eslint/parser @typescript-eslint/eslint-plugin",
+    "npm install --save-dev typescript @types/node @typescript-eslint/parser @typescript-eslint/eslint-plugin",
     { cwd: projectPath }
   );
   // Create tsconfig.json
@@ -132,7 +132,7 @@ async function installTypescript(projectPath) {
     tsconfig
   );
   // Make src directory
-  await fs.promises.mkdir(path.join(projectPath, "src"));
+  await fs.promises.mkdir(path.join(projectPath, "src"), { recursive: true });
 
   const scripts = {
     build: "tsc",
@@ -140,6 +140,56 @@ async function installTypescript(projectPath) {
     typecheck: "tsc -b",
   };
   await addScriptsToPackageJson(projectPath, scripts);
+}
+
+// This function installs tailwindcss and initializes it in the provided project path
+async function setupTailwindcss(projectPath) {
+  await runCommand("npm install --save-dev tailwindcss", { cwd: projectPath });
+  await runCommand("npx tailwindcss init", { cwd: projectPath });
+  await fs.promises.mkdir(path.join(projectPath, "src/styles"), {
+    recursive: true,
+  });
+  // Read in the tailwind.config.js file
+  const tailwindConfigPath = path.join(projectPath, "tailwind.config.js");
+  const tailwindConfigModule = await import(tailwindConfigPath);
+  const tailwindConfig = tailwindConfigModule.default;
+  tailwindConfig.content = ["./src/**/*.{html,js}"];
+
+  // Write the updated configuration back to the file
+  await fs.promises.writeFile(
+    tailwindConfigPath,
+    `export default ${JSON.stringify(tailwindConfig, null, 2)}`
+  );
+
+  // Create a basic CSS file
+  const cssContent = `@import 'tailwindcss/base';
+  @import 'tailwindcss/components';
+  @import 'tailwindcss/utilities';
+  `;
+  await fs.promises.writeFile(
+    path.join(projectPath, "src/styles", "styles.css"),
+    cssContent
+  );
+
+  // Add the CSS to your HTML
+  const htmlContent = `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectPath}</title>
+    <link href="/src/styles.css" rel="stylesheet">
+  </head>
+  <body class="bg-gray-200 text-gray-900">
+    <!-- Your content here -->
+  </body>
+  </html>
+  `;
+  await fs.promises.writeFile(
+    path.join(projectPath, "index.html"),
+    htmlContent
+  );
 }
 
 // This function creates an ESLint configuration file in the provided project path
@@ -198,11 +248,12 @@ async function setupGit(projectPath, useGit, projectName) {
   printOutput(`Project ${projectName} has been created`);
 }
 
-// This function creates a new project with the given name, type, and Git setup option
+// This function creates a new project with the given name, type, tailwindcss, and Git setup option
 // It creates a new directory, sets up an npm project, and configures ESLint and Prettier
 // If the project is TypeScript, it also installs TypeScript and creates a tsconfig.json file
+// If the project uses Tailwindcss, it installs tailwindcss and configures it
 // Finally, it sets up Git if the useGit option is true
-async function createProject(projectName, type, useGit) {
+async function createProject(projectName, type, useTailwindcss, useGit) {
   try {
     // Create new directory
     const projectPath = path.resolve(process.cwd(), projectName);
@@ -212,7 +263,12 @@ async function createProject(projectName, type, useGit) {
 
     // If TypeScript, install additional dependencies and create tsconfig.json
     if (type === "TypeScript") {
-      await installTypescript(projectPath);
+      await setupTypescript(projectPath);
+    }
+
+    // If Tailwindcss, install additional dependencies and create tailwind.config.js
+    if (useTailwindcss) {
+      await setupTailwindcss(projectPath);
     }
 
     await createEslintConfig(projectPath, type);
@@ -245,6 +301,12 @@ async function askQuestions() {
     },
     {
       type: "confirm",
+      name: "useTailwindcss",
+      message: "Would you like to set up Tailwind CSS?",
+      default: false,
+    },
+    {
+      type: "confirm",
       name: "useGit",
       message: "Would you like to set up Git?",
       default: true,
@@ -253,7 +315,12 @@ async function askQuestions() {
 
   const answers = await inquirer.prompt(questions);
 
-  await createProject(answers.projectName, answers.type, answers.useGit);
+  await createProject(
+    answers.projectName,
+    answers.type,
+    answers.useTailwindcss,
+    answers.useGit
+  );
 }
 
 // Call the function to ask questions and start the project creation process
