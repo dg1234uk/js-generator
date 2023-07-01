@@ -8,7 +8,5 @@
     "skipLibCheck": true,
     "outDir": "./build"
   },
-  "include": [
-    "./src/**/*"
-  ]
+  "include": ["./src/**/*.ts"]
 }
