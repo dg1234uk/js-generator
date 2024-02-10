@@ -48,7 +48,7 @@ function runCommand(command, options) {
     childProcess.on("exit", (code) => {
       if (code !== 0) {
         const error = new Error(
-          `Command "${command}" failed with exit code ${code}`
+          `Command "${command}" failed with exit code ${code}`,
         );
         console.error(error);
         reject(error);
@@ -75,7 +75,7 @@ async function modulePackageJson(projectPath) {
 
   await fs.promises.writeFile(
     packageJsonPath,
-    JSON.stringify(packageJson, null, 2)
+    JSON.stringify(packageJson, null, 2),
   );
 }
 
@@ -105,14 +105,14 @@ async function addScriptsToPackageJson(projectPath, scripts) {
         ...obj,
         [key]: packageJson.scripts[key],
       }),
-      {}
+      {},
     );
 
   packageJson.scripts = sortedScripts;
 
   await fs.promises.writeFile(
     packageJsonPath,
-    JSON.stringify(packageJson, null, 2)
+    JSON.stringify(packageJson, null, 2),
   );
 }
 
@@ -124,7 +124,7 @@ async function createNpmProject(projectPath) {
     await runCommand("npm init -y", { cwd: projectPath });
     await runCommand(
       "npm install --save-dev eslint prettier eslint-config-prettier eslint-config-airbnb eslint-plugin-import",
-      { cwd: projectPath }
+      { cwd: projectPath },
     );
     await modulePackageJson(projectPath);
     const scripts = {
@@ -144,13 +144,13 @@ async function createNpmProject(projectPath) {
 async function setupTypescript(projectPath, singleDevScript) {
   await runCommand(
     "npm install --save-dev typescript @types/node @typescript-eslint/parser @typescript-eslint/eslint-plugin",
-    { cwd: projectPath }
+    { cwd: projectPath },
   );
   // Create tsconfig.json
   const tsconfig = await fs.promises.readFile(TSCONFIG, ENCODING);
   await fs.promises.writeFile(
     path.join(projectPath, "tsconfig.json"),
-    tsconfig
+    tsconfig,
   );
   // Make src directory
   await fs.promises.mkdir(path.join(projectPath, "src"), { recursive: true });
@@ -168,7 +168,7 @@ async function setupTypescript(projectPath, singleDevScript) {
 
   await fs.promises.writeFile(
     path.join(projectPath, "src", "app.ts"),
-    'console.log("Hello, world!");'
+    'console.log("Hello, world!");',
   );
 }
 
@@ -189,13 +189,13 @@ async function setupTailwindcss(projectPath, type, singleDevScript) {
   // Read in the tailwind.config file
   let tailwindConfigFile = await fs.promises.readFile(
     tailwindConfigPath,
-    ENCODING
+    ENCODING,
   );
 
   // Modify the configuration
   tailwindConfigFile = tailwindConfigFile.replace(
     /content: \[\],/,
-    `content: ["./src/**/*.{html,js}", "./index.html"],`
+    `content: ["./src/**/*.{html,js}", "./index.html"],`,
   );
 
   // Write the updated configuration back to the file
@@ -207,8 +207,8 @@ async function setupTailwindcss(projectPath, type, singleDevScript) {
   @import 'tailwindcss/utilities';
   `;
   await fs.promises.writeFile(
-    path.join(projectPath, "src/styles", "styles.css"),
-    cssContent
+    path.join(projectPath, "src/styles/", "styles.css"),
+    cssContent,
   );
 
   // Add the CSS to your HTML
@@ -228,7 +228,7 @@ async function setupTailwindcss(projectPath, type, singleDevScript) {
   `;
   await fs.promises.writeFile(
     path.join(projectPath, "index.html"),
-    htmlContent
+    htmlContent,
   );
 
   if (singleDevScript) {
@@ -265,7 +265,7 @@ async function createEslintConfig(projectPath, type) {
 
   await fs.promises.writeFile(
     path.join(projectPath, ".eslintrc.json"),
-    eslintConfig
+    eslintConfig,
   );
 }
 
@@ -274,7 +274,7 @@ async function createPrettierConfig(projectPath) {
   const prettierConfig = await fs.promises.readFile(PRETTIER_CONFIG, ENCODING);
   await fs.promises.writeFile(
     path.join(projectPath, ".prettierrc.json"),
-    prettierConfig
+    prettierConfig,
   );
 }
 
@@ -288,7 +288,7 @@ async function setupGit(projectPath, useGit, projectName) {
     // Write .gitignore
     await fs.promises.writeFile(
       path.join(projectPath, ".gitignore"),
-      gitIgnore
+      gitIgnore,
     );
 
     // Initialize Git, commit project setup, and create 'dev' branch
@@ -385,7 +385,7 @@ async function askQuestions() {
     answers.projectName,
     answers.type,
     answers.useTailwindcss,
-    answers.useGit
+    answers.useGit,
   );
 }
 
